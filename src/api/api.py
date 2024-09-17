@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from passlib.context import CryptContext
 from sqlalchemy import or_
@@ -29,16 +29,21 @@ def get_password_hash(password):
     return pwd_context.hash(password)
 
 def get_current_user(token: str = Depends(oauth2_scheme)) -> TokenData:
+    user = verify_token(token)
+
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
     return decode_access_token(token)
 
 
-
+# Route выдачи токена
 @app.post("/token", response_model=Token)
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    # Псевдокод: получение пользователя из базы данных
-    # user = get_user_by_username(form_data.username)
-    #user = {"username": "user", "password": get_password_hash("user")}  # Пример
-
     user = crud.get_user_by_username(db=db, username=form_data.username)
     
     if not user or not verify_password(form_data.password, user.hashed_password):
@@ -49,17 +54,13 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
     return {"access_token": access_token, "token_type": "bearer"}
 
 
-
-
-
+# Route регистрации пользователя
 @app.post("/register")
 def register_user_endpoint(user: UserCreate, db: Session = Depends(get_db)):
     hashed_password = get_password_hash(user.password)
     user = User(username=user.username, hashed_password=hashed_password)
 
     return crud.create_user(db=db, user=user)
-
-
 
 
 # Route получения заметок (по дефолту 10 шт. Сделана пагинация)
