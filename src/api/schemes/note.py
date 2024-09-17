@@ -12,5 +12,7 @@ class NoteCreate(NoteBase):
     pass
 
 
-class NoteUpdate(NoteBase):
-    pass
+class NoteUpdate(BaseModel):
+    title: Optional[str] = None
+    content: Optional[str] = None
+    tags: Optional[List[str]] = None
