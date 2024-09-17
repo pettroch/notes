@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from passlib.context import CryptContext
 from sqlalchemy import or_
@@ -14,8 +15,11 @@ from api.schemes.jwt import Token, TokenData
 from api.schemes.user import UserCreate
 from api.jwt.jwt import create_access_token, verify_token, decode_access_token
 
+from api.middleware import RateLimitMiddleware
+
 
 app = FastAPI()
+app.add_middleware(RateLimitMiddleware, max_requests=10, period=60)
 
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
@@ -35,10 +39,9 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> TokenData:
     user = verify_token(token)
 
     if user is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired token",
-            headers={"WWW-Authenticate": "Bearer"},
+        return JSONResponse(
+                    status_code=401,
+                    content={"detail": "Неверный или истекший токен"}
         )
     
     return decode_access_token(token)
@@ -102,7 +105,10 @@ def read_note(note_id: int, db: Session = Depends(get_db), current_user: TokenDa
     db_note = crud.get_note_by_id(db, note_id, user_id=current_user.id)
 
     if db_note is None:
-        raise HTTPException(status_code=404, detail="Note not found")
+        return JSONResponse(
+                    status_code=404,
+                    content={"detail": "Заметка не найдена"}
+        )
     
     return db_note
 
@@ -113,7 +119,10 @@ def delete_note_endpoint(note_id: int, db: Session = Depends(get_db), current_us
     db_note = crud.delete_note(db=db, note_id=note_id, user_id=current_user.id)
 
     if db_note is None:
-        raise HTTPException(status_code=404, detail="Note not found")
+        return JSONResponse(
+                    status_code=404,
+                    content={"detail": "Заметка не найдена"}
+        )
     
     return {"detail": "Note deleted successfully"}
 
@@ -124,6 +133,9 @@ def update_note_endpoint(note_id: int, note: NoteUpdate, db: Session = Depends(g
     db_note = crud.update_note(db=db, note_id=note_id, note=note, user_id=current_user.id)
 
     if db_note is None:
-        raise HTTPException(status_code=404, detail="Note not found")
+        return JSONResponse(
+                    status_code=404,
+                    content={"detail": "Заметка не найдена"}
+        )        
     
     return db_note

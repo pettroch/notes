@@ -1,0 +1,2 @@
+API_TOKEN = '7530860585:AAGnU_RFAcH79Nkj990_oEMdKsiOwwT9LEM'
+API_URL = 'http://localhost:8000'
