@@ -22,12 +22,15 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
+# Проверка пароля 
 def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
 
+# Хеширование пароля
 def get_password_hash(password):
     return pwd_context.hash(password)
 
+# Авторизован ли пользователь
 def get_current_user(token: str = Depends(oauth2_scheme)) -> TokenData:
     user = verify_token(token)
 
@@ -44,6 +47,7 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> TokenData:
 # Route выдачи токена
 @app.post("/token", response_model=Token)
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    # Пытаемся получить текущего пользователя
     user = crud.get_user_by_username(db=db, username=form_data.username)
     
     if not user or not verify_password(form_data.password, user.hashed_password):

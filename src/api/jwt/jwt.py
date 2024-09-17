@@ -7,9 +7,11 @@ from api.jwt.config import SECRET_KEY, ALGORITHM
 from api.schemes.jwt import TokenData
 
 
+# Создание токена
 def create_access_token(data: dict, expires_delta: Union[timedelta, None] = None):
     to_encode = data.copy()
 
+    # Время токена
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
     else:
@@ -21,7 +23,7 @@ def create_access_token(data: dict, expires_delta: Union[timedelta, None] = None
     return encoded_jwt
 
 
-
+# Проверка токена
 def verify_token(token: str):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
@@ -30,6 +32,7 @@ def verify_token(token: str):
         return None
 
 
+# Декодирование токена
 def decode_access_token(token: str) -> TokenData:
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
