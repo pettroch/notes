@@ -1,3 +1,5 @@
+import httpx
+
 from aiogram import Dispatcher, types
 from aiogram.dispatcher.filters.state import StatesGroup, State
 from aiogram.dispatcher import FSMContext
@@ -8,12 +10,6 @@ class Form(StatesGroup):
     title = State()    # Ожидание заголовка
     content = State()  # Ожидание содержимого
     tags = State()     # Ожидание тегов
-
-
-# Ввод заголовка заметки
-async def start_create_note_command(message: types.Message):
-    await message.reply("Введите заголовок заметки:")
-    await Form.title.set()
 
 
 # Ввод контента заметки
@@ -37,11 +33,23 @@ async def process_finish(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         data['tags'] = message.text
 
-    # Здесь вы можете сохранить заметку в базу данных или сделать другую обработку
 
     title = data['title']
     content = data['content']
     tags = data['tags']
+
+    # Отправка данных на API для создания заметки
+    async with httpx.AsyncClient() as client:
+        response = await client.post(f"http://localhost:80/notes", json={
+            "title": title,
+            "content": content,
+            "tags": tags.split(",")
+        })
+
+        if response.status_code == 201:
+            await message.reply("Заметка успешно создана!")
+        else:
+            await message.reply("Ошибка при создании заметки.")
 
     await message.reply(f"Заметка создана!\n\nЗаголовок: {title}\nСодержимое: {content}\nТеги: {tags}")
 
@@ -50,7 +58,6 @@ async def process_finish(message: types.Message, state: FSMContext):
 
 
 def register_handlers(dp: Dispatcher):
-    dp.register_message_handler(start_create_note_command, lambda message: message.text == "Создать заметку")
     dp.register_message_handler(process_content, state=Form.title)
     dp.register_message_handler(process_tags, state=Form.content)
     dp.register_message_handler(process_finish, state=Form.tags)

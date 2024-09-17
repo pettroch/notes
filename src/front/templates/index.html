@@ -1,21 +1,44 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
+<head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Добро пожаловать!</title>
-  </head>
-  <body>
+</head>
+<body>
     <h1>Добро пожаловать!</h1>
     <nav>
-      <ul>
-        <li><a href="/create-note">Создать заметку</a></li>
-        <li><a href="/get-notes">Получить заметки</a></li>
-        <li><a href="/search-notes">Поиск заметок по тегам</a></li>
-        <li><a href="/get-note">Получить заметку по ID</a></li>
-        <li><a href="/delete-note">Удалить заметку по ID</a></li>
-        <li><a href="/update-note">Обновить заметку по ID</a></li>
-      </ul>
+        <ul>
+            <li><a href="/create-note">Создать заметку</a></li>
+            <li><a href="/get-notes">Получить заметки</a></li>
+            <li><a href="/search-notes">Поиск заметок по тегам</a></li>
+            <li><a href="/get-note">Получить заметку по ID</a></li>
+            <li><a href="/delete-note">Удалить заметку по ID</a></li>
+            <li><a href="/update-note">Обновить заметку по ID</a></li>
+        </ul>
     </nav>
-  </body>
+    <a id="telegram-link" href="#">
+        Привязать Telegram
+    </a>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                // Получаем ID пользователя из API
+                const response = await fetch('/user-id');
+                const data = await response.json();
+
+                if (data.user_id) {
+                    // Обновляем ссылку с параметром user_id
+                    const telegramLink = `https://t.me/notes2_test_task_bot?start=${data.user_id}`;
+                    document.getElementById('telegram-link').href = telegramLink;
+                } else {
+                    console.error("Не удалось получить ID пользователя");
+                }
+            } catch (error) {
+                console.error("Ошибка при получении ID пользователя:", error);
+            }
+        });
+    </script>
+</body>
 </html>

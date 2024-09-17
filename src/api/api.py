@@ -1,7 +1,8 @@
-from fastapi import FastAPI, Depends, HTTPException, Request, Form
+import hashlib
+import hmac
+from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from passlib.context import CryptContext
 from sqlalchemy import or_
@@ -24,7 +25,6 @@ templates = Jinja2Templates(directory="src/front/templates")
 
 app = FastAPI()
 app.add_middleware(RateLimitMiddleware, max_requests=10, period=60)
-app.mount("/static", StaticFiles(directory="src/front"), name="static")
 
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
@@ -35,11 +35,9 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
 
-
 # Хеширование пароля
 def get_password_hash(password):
     return pwd_context.hash(password)
-
 
 # Авторизован ли пользователь
 def get_current_user(request: Request) -> TokenData:
@@ -54,6 +52,20 @@ def get_current_user(request: Request) -> TokenData:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
 
     return decode_access_token(token)
+
+
+# Получить айди текущего пользователя
+@app.get("/user-id")
+async def get_user_id(request: Request):
+    try:
+        user_data = get_current_user(request)
+        user_id = user_data.id
+        return JSONResponse(content={"user_id": user_id})
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Internal Server Error")
+
 
 
 # Route выдачи токена
@@ -71,7 +83,7 @@ def login(
 
     response = RedirectResponse(url="/index", status_code=302)
     response.set_cookie(
-        key="access_token", value=access_token, httponly=True, max_age=3600
+        key="access_token", value=access_token, max_age=3600
     )
     return response
 
@@ -173,30 +185,18 @@ def update_note_endpoint(
     return db_note
 
 
-# Route обработки Telegram-токена
-@app.post("/telegram/auth")
-async def telegram_auth(request: Request, db: Session = Depends(get_db)):
-    data = await request.json()
-    token = data.get("token")
-    user_id = data.get("telegram_user_id")
 
-    # Связываем Telegram аккаунт с существующим пользователем по токену
-    user = crud.get_user_by_telegram_id(db, telegram_user_id=user_id)
-    
-    if not user:
-        # Если пользователь не найден, создаем нового или выдаем ошибку
-        return JSONResponse(status_code=404, content={"detail": "Пользователь не найден"})
 
-    # Выдаем новый JWT токен для дальнейшей работы через веб-интерфейс
-    access_token = create_access_token(data={"username": user.username, "id": user.id})
-    
-    return {"access_token": access_token}
+
+
+
+
 
 
 
 # Страница авторизации
 @app.get("/login", response_class=HTMLResponse)
-def get_login_page(request: Request, current_user: TokenData = Depends(get_current_user)):
+def get_login_page(request: Request):
     return templates.TemplateResponse("login.html", {"request": request})
 
 
@@ -258,9 +258,11 @@ async def index_page(
 # Перенаправление на страницу входа, если пользователь не аутентифицирован
 @app.middleware("http")
 async def redirect_if_not_authenticated(request: Request, call_next):
-    if request.url.path not in ["/login", "/token"] and not request.cookies.get(
+    if request.url.path not in ["/login", "/token", "/register"] and not request.cookies.get(
         "access_token"
     ):
         return RedirectResponse(url="/login")
+    
     response = await call_next(request)
+
     return response

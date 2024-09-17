@@ -18,9 +18,19 @@ def create_user(db: Session, user: UserCreate):
 
     return db_user
 
-# Получить юзера из бд
+# Получить юзера из бд по username
 def get_user_by_username(db: Session, username: str):
     return db.query(User).filter(User.username == username).first()
+
+
+# Получить юзера из бд по id
+def get_user_by_id(db: Session, id: int):
+    return db.query(User).filter(User.id == id).first()
+
+
+# Получить юзера по тг id
+def get_user_by_telegram_id(db: Session, id: int):
+    return db.query(User).filter(User.telegram_id == id).first()
 
 
 # Создание заметки в бд
