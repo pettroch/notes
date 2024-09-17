@@ -12,7 +12,7 @@ Base = declarative_base()
 metadata = MetaData()
 engine.connect()
 
-
+# Получение сессии бд
 def get_db():
     db = SessionLocal()
     try:
