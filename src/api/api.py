@@ -47,12 +47,12 @@ def get_current_user(request: Request) -> TokenData:
 
     if not token:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    
+
     user = verify_token(token)
 
     if user is None:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
-    
+
     return decode_access_token(token)
 
 
@@ -70,7 +70,9 @@ def login(
     access_token = create_access_token(data={"username": user.username, "id": user.id})
 
     response = RedirectResponse(url="/index", status_code=302)
-    response.set_cookie(key="access_token", value=access_token, httponly=True, max_age=3600)
+    response.set_cookie(
+        key="access_token", value=access_token, httponly=True, max_age=3600
+    )
     return response
 
 
@@ -171,31 +173,94 @@ def update_note_endpoint(
     return db_note
 
 
+# Route обработки Telegram-токена
+@app.post("/telegram/auth")
+async def telegram_auth(request: Request, db: Session = Depends(get_db)):
+    data = await request.json()
+    token = data.get("token")
+    user_id = data.get("telegram_user_id")
+
+    # Связываем Telegram аккаунт с существующим пользователем по токену
+    user = crud.get_user_by_telegram_id(db, telegram_user_id=user_id)
+    
+    if not user:
+        # Если пользователь не найден, создаем нового или выдаем ошибку
+        return JSONResponse(status_code=404, content={"detail": "Пользователь не найден"})
+
+    # Выдаем новый JWT токен для дальнейшей работы через веб-интерфейс
+    access_token = create_access_token(data={"username": user.username, "id": user.id})
+    
+    return {"access_token": access_token}
 
 
 
 # Страница авторизации
 @app.get("/login", response_class=HTMLResponse)
-def get_login_page(request: Request):
+def get_login_page(request: Request, current_user: TokenData = Depends(get_current_user)):
     return templates.TemplateResponse("login.html", {"request": request})
+
+
+# Страница создания заметки
+@app.get("/create-note", response_class=HTMLResponse)
+def get_create_note_page(request: Request, current_user: TokenData = Depends(get_current_user)):
+    return templates.TemplateResponse("create-note.html", {"request": request})
+
+
+# Страница получения заметок
+@app.get("/get-notes", response_class=HTMLResponse)
+def get_notes(request: Request, current_user: TokenData = Depends(get_current_user)):
+    return templates.TemplateResponse("get-notes.html", {"request": request})
+
+
+# Страница поиска заметок
+@app.get("/search-notes", response_class=HTMLResponse)
+def search_notes(request: Request, current_user: TokenData = Depends(get_current_user)):
+    return templates.TemplateResponse("search-notes.html", {"request": request})
+
+
+# Страница поиска заметки по ID
+@app.get("/get-note", response_class=HTMLResponse)
+def search_note_by_id(request: Request, current_user: TokenData = Depends(get_current_user)):
+    return templates.TemplateResponse("search-note-by-id.html", {"request": request})
+
+
+# Страница удаления заметки по ID
+@app.get("/delete-note", response_class=HTMLResponse)
+def delete_note_by_id(request: Request, current_user: TokenData = Depends(get_current_user)):
+    return templates.TemplateResponse("delete-note-by-id.html", {"request": request})
+
+
+# Страница обновления заметки по ID
+@app.get("/update-note", response_class=HTMLResponse)
+def delete_note_by_id(request: Request, current_user: TokenData = Depends(get_current_user)):
+    return templates.TemplateResponse("update-note-by-id.html", {"request": request})
 
 
 # Страница главного экрана
 @app.get("/index", response_class=HTMLResponse)
-def get_index_page(request: Request, current_user: TokenData = Depends(get_current_user)):
+def get_index_page(request: Request, current_user: TokenData = Depends(get_current_user)
+):
     return templates.TemplateResponse("index.html", {"request": request})
 
 
 # Маршрут для главной страницы
 @app.get("/", response_class=HTMLResponse)
-async def index_page(request: Request, current_user: TokenData = Depends(get_current_user)):
-    return templates.TemplateResponse("index.html", {"request": request, "user": current_user})
+async def index_page(
+    request: Request, current_user: TokenData = Depends(get_current_user)
+):
+    return templates.TemplateResponse(
+        "index.html", {"request": request, "user": current_user}
+    )
+
+
 
 
 # Перенаправление на страницу входа, если пользователь не аутентифицирован
 @app.middleware("http")
 async def redirect_if_not_authenticated(request: Request, call_next):
-    if request.url.path not in ["/login", "/token"] and not request.cookies.get("access_token"):
+    if request.url.path not in ["/login", "/token"] and not request.cookies.get(
+        "access_token"
+    ):
         return RedirectResponse(url="/login")
     response = await call_next(request)
     return response

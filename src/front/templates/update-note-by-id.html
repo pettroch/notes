@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Update Note by ID</title>
+</head>
+<body>
+    <h1>Update Note by ID</h1>
+    <form id="update-form">
+        <input type="number" id="note-id" name="note-id" placeholder="Enter note ID" required>
+        <input type="text" id="title" name="title" placeholder="New Title">
+        <textarea id="content" name="content" placeholder="New Content"></textarea>
+        <input type="text" id="tags" name="tags" placeholder="New Tags (comma-separated)">
+        <button type="submit">Update Note</button>
+    </form>
+
+    <div id="result"></div>
+
+    <script>
+        document.getElementById('update-form').addEventListener('submit', async function(event) {
+            event.preventDefault();
+
+            const noteId = document.getElementById('note-id').value;
+            const title = document.getElementById('title').value;
+            const content = document.getElementById('content').value;
+            const tags = document.getElementById('tags').value.split(',').map(tag => tag.trim());
+            const token = getCookie('access_token');
+
+            const response = await fetch(`/notes/${noteId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ title, content, tags })
+            });
+
+            if (response.ok) {
+                document.getElementById('result').innerHTML = 'Note updated successfully';
+            } else {
+                document.getElementById('result').innerHTML = 'Error updating note';
+            }
+        });
+
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+        }
+    </script>
+</body>
+</html>

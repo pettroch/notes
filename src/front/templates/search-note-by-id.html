@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search Note by ID</title>
+</head>
+<body>
+    <h1>Search Note by ID</h1>
+    <form id="search-form">
+        <input type="number" id="note-id" name="note-id" placeholder="Enter note ID" required>
+        <button type="submit">Search</button>
+    </form>
+
+    <div id="result"></div>
+
+    <script>
+        document.getElementById('search-form').addEventListener('submit', async function(event) {
+            event.preventDefault();
+
+            const noteId = document.getElementById('note-id').value;
+            const token = getCookie('access_token');
+
+            const response = await fetch(`/notes/${noteId}`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (response.ok) {
+                const note = await response.json();
+                displayResult(note);
+            } else {
+                document.getElementById('result').innerHTML = 'Error fetching note';
+            }
+        });
+
+        function displayResult(note) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = ''; // Clear previous result
+
+            if (!note) {
+                resultDiv.innerHTML = '<p>No note found</p>';
+                return;
+            }
+
+            const noteElement = document.createElement('div');
+            // Проверяем, является ли note.tags массивом
+            const tags = Array.isArray(note.tags) ? note.tags.join(', ') : (typeof note.tags === 'string' ? note.tags : 'N/A');
+            noteElement.innerHTML = `
+                <h2>Note Details</h2>
+                <p><strong>Title:</strong> ${note.title}</p>
+                <p><strong>Content:</strong> ${note.content}</p>
+                <p><strong>Tags:</strong> ${tags}</p>
+            `;
+            resultDiv.appendChild(noteElement);
+        }
+
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+        }
+    </script>
+</body>
+</html>
